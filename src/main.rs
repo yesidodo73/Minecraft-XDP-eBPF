@@ -4,7 +4,7 @@ use anyhow::Context;
 use anyhow::Result;
 use aya::{
     Ebpf, include_bytes_aligned,
-    maps::{HashMap, MapData, PerCpuArray, PerCpuHashMap, PerCpuValues},
+    maps::{HashMap, MapData, PerCpuArray, PerCpuHashMap},
     programs::{Xdp, XdpFlags},
 };
 use clap::Parser;
@@ -272,11 +272,25 @@ fn load(
         .try_into()?;
     programm.load()?;
 
-    let result = programm.attach(interface, XdpFlags::empty())?;
-    info!(
-        "BPF program attached to interface: {} ({:?})",
-        interface, result
-    );
+    match programm.attach(interface, XdpFlags::empty()) {
+        Ok(result) => {
+            info!(
+                "BPF program attached to interface: {} ({:?})",
+                interface, result
+            );
+        }
+        Err(default_error) => {
+            warn!(
+                "Default XDP attach failed: {:?}; retrying with SKB/generic mode",
+                default_error
+            );
+            let result = programm.attach(interface, XdpFlags::SKB_MODE)?;
+            info!(
+                "BPF program attached to interface in SKB/generic mode: {} ({:?})",
+                interface, result
+            );
+        }
+    }
 
     for (name, _) in ebpf.maps() {
         info!("Found map: {}", name);
@@ -540,4 +554,3 @@ where
     }
     Ok(())
 }
-

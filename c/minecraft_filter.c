@@ -350,8 +350,9 @@ __s32 minecraft_filter(struct xdp_md *ctx)
             {
                 goto drop;
             }
-            initial_state->state = AWAIT_PING;
-            goto update_state;
+            // Status pings can arrive with enough concurrency that strict ping-state
+            // tracking false-positives; after a valid status request, pass the flow.
+            goto switch_to_verified;
         }
         if (state == AWAIT_PING)
         {
