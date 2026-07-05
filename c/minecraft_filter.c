@@ -333,9 +333,12 @@ __s32 minecraft_filter(struct xdp_md *ctx)
             {
                 goto drop_connection;
             }
-            if (next_state == DIRECT_READ_STATUS_REQUEST)
+            if (next_state == AWAIT_STATUS_REQUEST || next_state == DIRECT_READ_STATUS_REQUEST)
             {
-                goto read_status;
+                // A valid status-intention handshake is enough to let the flow through.
+                // Some status clients coalesce or split the following packets in ways
+                // that are too strict for generic XDP sequence inspection.
+                goto switch_to_verified;
             }
             if (next_state == DIRECT_READ_LOGIN)
             {
